@@ -4,12 +4,14 @@ import helmet from "helmet";
 import formRoutes from "./routes/formRoutes.js";
 import { connectDB } from "./config/db.js";
 import dotenv from "dotenv";
+import { validateEnv } from "./config/validateEnv.js";
 import rateLimiter from "./middleware/rateLimiter.js";
 import authRoutes from "./routes/authRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

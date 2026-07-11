@@ -101,7 +101,18 @@ export const adminGetBookings = asyncHandler(async (req, res) => {
     return res.status(200).json(booking);
   }
 
-  const bookings = await BookingForm.find().sort({ createdAt: -1 });
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 1000, 1), 1000);
+
+  const [bookings, total] = await Promise.all([
+    BookingForm.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    BookingForm.countDocuments(),
+  ]);
+
+  res.set("X-Total-Count", total);
   res.status(200).json(bookings);
 });
 
@@ -163,7 +174,18 @@ export const adminGetContacts = asyncHandler(async (req, res) => {
     return res.status(200).json(contact);
   }
 
-  const contacts = await ContactForm.find().sort({ createdAt: -1 });
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 1000, 1), 1000);
+
+  const [contacts, total] = await Promise.all([
+    ContactForm.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    ContactForm.countDocuments(),
+  ]);
+
+  res.set("X-Total-Count", total);
   res.status(200).json(contacts);
 });
 

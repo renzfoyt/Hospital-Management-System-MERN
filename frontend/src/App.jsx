@@ -7,7 +7,9 @@ import FindDoctor from './Pages/FindDoctor';
 import BookAppointment from './Pages/BookAppointment';
 import AdminLogin from './Pages/Admin/AdminLogin';
 import AdminDashboard from './Pages/Admin/AdminDashboard';
+import NotFound from './Pages/NotFound';
 import RequireAdminAuth from './Components/RequireAdminAuth';
+import ErrorBoundary from './Components/ErrorBoundary';
 import { NavProvider } from './context/NavContext';
 
 const App = () => {
@@ -30,20 +32,23 @@ const App = () => {
       <div>
         {!isAdminRoute && <Header />}
         <div key={location.pathname} className="animate-page-fade">
-          <Routes location={location}>
-            <Route path='/' element={<Home />} />
-            <Route path='/FindDoctor' element={<FindDoctor />} />
-            <Route path='/BookAppointment' element={<BookAppointment />} />
-            <Route path='/admin/login' element={<AdminLogin />} />
-            <Route
-              path='/admin'
-              element={
-                <RequireAdminAuth>
-                  <AdminDashboard />
-                </RequireAdminAuth>
-              }
-            />
-          </Routes>
+          <ErrorBoundary>
+            <Routes location={location}>
+              <Route path='/' element={<Home />} />
+              <Route path='/FindDoctor' element={<FindDoctor />} />
+              <Route path='/BookAppointment' element={<BookAppointment />} />
+              <Route path='/admin/login' element={<AdminLogin />} />
+              <Route
+                path='/admin'
+                element={
+                  <RequireAdminAuth>
+                    <AdminDashboard />
+                  </RequireAdminAuth>
+                }
+              />
+              <Route path='*' element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </div>
 
         {!isAdminRoute && <Footer />}
