@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import logo from "../Assets/olivarezlogo.png";
+import { useNav } from "../context/NavContext";
 
 const navItems = [
   { label: "Home", path: "/" },
@@ -11,11 +12,19 @@ const navItems = [
   { label: "Book an Appointment", path: "/BookAppointment" },
 ];
 
+// Shared "growing underline" treatment for every tab — an orange bar
+// that expands under the label when that tab is the active one.
+const underlineClasses = (active) =>
+  `relative pb-1 after:absolute after:left-0 after:-bottom-0.5 after:h-[2px] after:rounded-full after:bg-orange-500 after:transition-all after:duration-300 after:content-[''] ${
+    active ? "after:w-full" : "after:w-0"
+  }`;
+
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const headerRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { activeSection } = useNav();
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -28,10 +37,11 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
-  const linkClasses = ({ isActive }) =>
-    `text-[13px] font-medium transition-colors hover:text-orange-600 ${
-      isActive ? "text-green-900" : "text-green-900"
-    }`;
+  // Home/About/Services/Contact all "live" on the "/" route, so their
+  // active state comes from which section is scrolled into view, not
+  // just the URL — that's what lets the underline track scrolling.
+  const isHomeSectionActive = (sectionKey) =>
+    location.pathname === "/" && activeSection === sectionKey;
 
   const handleHomeClick = (e) => {
     if (location.pathname === "/") {
@@ -84,17 +94,33 @@ const Header = () => {
                 key={item.label}
                 href={`/#${item.scrollTo}`}
                 onClick={handleScrollClick(item.scrollTo)}
-                className="text-[13px] font-medium text-green-900 transition-colors hover:text-orange-600"
+                className={`text-[13px] font-medium text-green-900 transition-colors hover:text-orange-600 ${underlineClasses(
+                  isHomeSectionActive(item.scrollTo),
+                )}`}
               >
                 {item.label}
               </a>
+            ) : item.path === "/" ? (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end
+                onClick={handleHomeClick}
+                className={`text-[13px] font-medium text-green-900 transition-colors hover:text-orange-600 ${underlineClasses(
+                  isHomeSectionActive("home"),
+                )}`}
+              >
+                {item.label}
+              </NavLink>
             ) : (
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === "/"}
-                onClick={item.path === "/" ? handleHomeClick : undefined}
-                className={linkClasses}
+                className={({ isActive }) =>
+                  `text-[13px] font-medium text-green-900 transition-colors hover:text-orange-600 ${underlineClasses(
+                    isActive,
+                  )}`
+                }
               >
                 {item.label}
               </NavLink>
@@ -140,19 +166,37 @@ const Header = () => {
                 href={`/#${item.scrollTo}`}
                 onClick={handleScrollClick(item.scrollTo)}
                 style={{ animationDelay: `${index * 80}ms` }}
-                className="animate-drop-in w-full rounded-md px-3 py-2 text-center text-[13px] font-medium text-green-900 hover:bg-green-950/10"
+                className={`animate-drop-in w-full rounded-md px-3 py-2 text-center text-[13px] font-medium text-green-900 hover:bg-green-950/10 ${
+                  isHomeSectionActive(item.scrollTo) ? "bg-green-800/10" : ""
+                }`}
               >
-                {item.label}
+                <span className={underlineClasses(isHomeSectionActive(item.scrollTo))}>
+                  {item.label}
+                </span>
               </a>
+            ) : item.path === "/" ? (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end
+                onClick={(e) => {
+                  setMenuOpen(false);
+                  handleHomeClick(e);
+                }}
+                style={{ animationDelay: `${index * 80}ms` }}
+                className={`animate-drop-in w-full rounded-md px-3 py-2 text-center text-[13px] font-medium text-green-900 hover:bg-green-950/10 ${
+                  isHomeSectionActive("home") ? "bg-green-800/10" : ""
+                }`}
+              >
+                <span className={underlineClasses(isHomeSectionActive("home"))}>
+                  {item.label}
+                </span>
+              </NavLink>
             ) : (
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === "/"}
-                onClick={(e) => {
-                  setMenuOpen(false);
-                  if (item.path === "/") handleHomeClick(e);
-                }}
+                onClick={() => setMenuOpen(false)}
                 style={{ animationDelay: `${index * 80}ms` }}
                 className={({ isActive }) =>
                   `animate-drop-in w-full rounded-md px-3 py-2 text-center text-[13px] font-medium ${
@@ -162,7 +206,9 @@ const Header = () => {
                   }`
                 }
               >
-                {item.label}
+                {({ isActive }) => (
+                  <span className={underlineClasses(isActive)}>{item.label}</span>
+                )}
               </NavLink>
             ),
           )}

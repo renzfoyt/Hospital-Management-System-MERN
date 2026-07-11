@@ -60,9 +60,18 @@ const AdminDashboard = () => {
     load(activeTab);
   }, [activeTab, load]);
 
-  const handleLogout = () => {
-    clearAdminToken();
-    navigate("/admin/login", { replace: true });
+  const handleLogout = async () => {
+    try {
+      // Best-effort: revoke the token server-side so it can't be reused
+      // even if someone got hold of it before it naturally expires.
+      await adminFetch("/auth/logout", { method: "POST" });
+    } catch (err) {
+      // Token may already be expired/invalid — that's fine, we're
+      // logging out either way. No need to surface this to the user.
+    } finally {
+      clearAdminToken();
+      navigate("/admin/login", { replace: true });
+    }
   };
 
   const handleStatusToggle = async (id, currentStatus) => {

@@ -9,7 +9,6 @@ const Carousel = ({
   subtitle,
 }) => {
   const [current, setCurrent] = useState(0);
-  const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [loadedIndices, setLoadedIndices] = useState(() => new Set([0]));
   const timerRef = useRef(null);
   const videoRefs = useRef([]);
@@ -36,13 +35,19 @@ const Carousel = ({
   const next = useCallback(() => goTo(current + 1), [current, goTo]);
   const prev = useCallback(() => goTo(current - 1), [current, goTo]);
 
+  const currentSlide = slides[current];
+  const isOnVideoSlide = currentSlide?.type === "video";
+
+  // Autoplay timer — only drives image slides. Video slides advance via
+  // their own onEnded handler below, so the carousel waits for the full
+  // video to finish before moving on.
   useEffect(() => {
-    if (isPlayingVideo || slides.length <= 1) return;
+    if (slides.length <= 1 || isOnVideoSlide) return;
     timerRef.current = setInterval(() => {
       setCurrent((prevIndex) => (prevIndex + 1) % slides.length);
     }, autoPlayInterval);
     return () => clearInterval(timerRef.current);
-  }, [current, isPlayingVideo, slides.length, autoPlayInterval]);
+  }, [current, slides.length, autoPlayInterval, isOnVideoSlide]);
 
   useEffect(() => {
     videoRefs.current.forEach((videoEl, index) => {
@@ -82,14 +87,11 @@ const Carousel = ({
                 ref={(el) => (videoRefs.current[index] = el)}
                 src={slide.src}
                 muted
-                loop
                 playsInline
                 disablePictureInPicture
                 preload={index === current ? "auto" : "metadata"}
                 className="h-full w-full object-cover"
-                onPlay={() => setIsPlayingVideo(true)}
-                onPause={() => setIsPlayingVideo(false)}
-                onEnded={() => setIsPlayingVideo(false)}
+                onEnded={next}
               />
             ) : (
               <img

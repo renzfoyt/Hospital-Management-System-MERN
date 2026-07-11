@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import Carousel from "../Components/Carousel";
+import { useNav } from "../context/NavContext";
 import { API_BASE_URL } from "../config/api";
 import photo1 from "../Assets/Carousel/imgslide1.webp";
 import photo2 from "../Assets/Carousel/imgslide2.webp";
@@ -69,6 +70,7 @@ const SERVICES = [
 const Home = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { setActiveSection } = useNav();
   const [expanded, setExpanded] = useState(null);
 
   const [contactForm, setContactForm] = useState({
@@ -143,29 +145,79 @@ const Home = () => {
   };
 
   // If we arrived here from another page via a nav-bar scroll link,
-  // scroll to the requested section once the page has rendered.
+  // jump straight to the requested section instead of smooth-scrolling —
+  // the route's fade-in is the transition here, so animating a scroll
+  // on top of it would look like two transitions stacked on each other.
   useEffect(() => {
     const targetId = location.state?.scrollTo;
     if (targetId) {
       const el = document.getElementById(targetId);
-      if (el) {
-        setTimeout(
-          () => el.scrollIntoView({ behavior: "smooth", block: "start" }),
-          50,
-        );
-      }
+      el?.scrollIntoView({ behavior: "auto", block: "start" });
       navigate(location.pathname, { replace: true, state: {} });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
+  // Scroll spy: rather than triggering the instant a single line crosses
+  // into a section's bounds (too twitchy — it can fire while the previous
+  // section still visually dominates the screen), this picks whichever
+  // section currently occupies the most vertical space in the viewport.
+  // That only flips once the new section has genuinely taken over.
+
+  // 0.5 = dead center of the visible area below the sticky header.
+// Lower it (e.g. 0.4) to trigger the underline earlier as you scroll down,
+// raise it (e.g. 0.6) to trigger it later.
+const CENTER_RATIO = 0.1;
+  useEffect(() => {
+    const ids = ["home", "about", "services", "contact"];
+    let ticking = false;
+
+    const computeActiveSection = () => {
+      ticking = false;
+      const header = document.querySelector("header");
+      const headerHeight = header ? header.offsetHeight : 0;
+      const visibleHeight = window.innerHeight - headerHeight;
+      const centerY = headerHeight + visibleHeight * CENTER_RATIO;
+      let bestId = null;
+
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= centerY && rect.bottom >= centerY) {
+          bestId = id;
+          break;
+        }
+      }
+
+      if (bestId) setActiveSection(bestId);
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(computeActiveSection);
+      }
+    };
+
+    computeActiveSection();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [setActiveSection]);
+
   return (
     <div className="w-full">
-      <Carousel
-        slides={slides}
-        title="Onward to Great Health"
-        subtitle="Dr. Arcadio Santos Ave, Parañaque City, 1700, Metro Manila"
-      />
+      <div id="home">
+        <Carousel
+          slides={slides}
+          title="Onward to Great Health"
+          subtitle="Dr. Arcadio Santos Ave, Parañaque City, 1700, Metro Manila"
+        />
+      </div>
 
       {/* About */}
       <section

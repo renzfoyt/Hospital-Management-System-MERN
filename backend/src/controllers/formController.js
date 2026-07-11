@@ -9,7 +9,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
  * @property {string} preferredTime
  * @property {string} firstName
  * @property {string} lastName
- * @property {number} mobileNum
+ * @property {string} mobileNum
  * @property {string} email
  * @property {string} [message] - optional
  */
@@ -18,7 +18,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
  * @typedef {Object} ContactRequestBody
  * @property {string} name
  * @property {string} email
- * @property {number} mobileNum
+ * @property {string} mobileNum
  * @property {string} message
  */
 
