@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { logger } from "./config/logger.js";
 import formRoutes from "./routes/formRoutes.js";
 import mongoSanitize from "express-mongo-sanitize";
+import compression from "compression";
 import rateLimiter from "./middleware/rateLimiter.js";
 import authRoutes from "./routes/authRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
@@ -41,6 +42,7 @@ export const createApp = () => {
 
   //middleware
   app.use(helmet());
+  app.use(compression()); // gzip/deflate responses to cut payload size over the wire
   app.use(cors({ origin: allowedOrigins }));
   app.use(express.json({ limit: "100kb" }));
   // Strips any keys starting with "$" or containing "." from req.body,
