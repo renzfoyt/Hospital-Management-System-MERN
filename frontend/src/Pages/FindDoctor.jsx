@@ -467,7 +467,7 @@ const FindDoctor = () => {
                   key={i}
                   className="animate-pulse rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm"
                 >
-                  <div className="mx-auto h-16 w-16 rounded-full bg-gray-200" />
+                  <div className="mx-auto h-32 w-32 rounded-full bg-gray-200" />
                   <div className="mx-auto mt-4 h-4 w-32 rounded bg-gray-200" />
                   <div className="mx-auto mt-2 h-3 w-24 rounded bg-gray-200" />
                   <div className="mt-5 space-y-2">
@@ -513,7 +513,7 @@ const FindDoctor = () => {
                       key={doc._id}
                       className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm"
                     >
-                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-700 text-lg font-semibold text-white">
+                      <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-green-700 text-4xl font-semibold text-white">
                         {getInitials(doc.firstName, doc.lastName)}
                       </div>
                       <h3 className="mt-3 text-base font-bold text-gray-900">
