@@ -47,4 +47,9 @@ const doctorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Covers the public "Find a Doctor" query: find({ status: "active" }).sort({ lastName: 1 }).
+// A compound index lets Mongo satisfy both the filter and the sort from
+// the index itself, instead of scanning every doctor document.
+doctorSchema.index({ status: 1, lastName: 1 });
+
 export const Doctor = mongoose.model("Doctor", doctorSchema);
