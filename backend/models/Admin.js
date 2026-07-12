@@ -10,6 +10,7 @@ const adminSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
+      select: false, // never returned by default — must be explicitly requested
     },
   },
   { timestamps: true }

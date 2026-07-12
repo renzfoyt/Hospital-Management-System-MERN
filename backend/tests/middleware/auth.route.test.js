@@ -29,10 +29,12 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns a token for valid credentials", async () => {
-    Admin.findOne.mockResolvedValue({
-      _id: "admin1",
-      username: "admin",
-      password: "hashed",
+    Admin.findOne.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: "admin1",
+        username: "admin",
+        password: "hashed",
+      }),
     });
     bcrypt.compare.mockResolvedValue(true);
 
@@ -45,10 +47,12 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns 401 for a wrong password", async () => {
-    Admin.findOne.mockResolvedValue({
-      _id: "admin1",
-      username: "admin",
-      password: "hashed",
+    Admin.findOne.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: "admin1",
+        username: "admin",
+        password: "hashed",
+      }),
     });
     bcrypt.compare.mockResolvedValue(false);
 

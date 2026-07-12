@@ -31,10 +31,12 @@ const mockRes = () => {
 
 describe("authController.login", () => {
   it("returns a signed JWT on valid credentials", async () => {
-    Admin.findOne.mockResolvedValue({
-      _id: "admin123",
-      username: "admin",
-      password: "hashed-password",
+    Admin.findOne.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: "admin123",
+        username: "admin",
+        password: "hashed-password",
+      }),
     });
     bcrypt.compare.mockResolvedValue(true);
 
@@ -57,7 +59,9 @@ describe("authController.login", () => {
   });
 
   it("returns 401 when the username doesn't exist", async () => {
-    Admin.findOne.mockResolvedValue(null);
+    Admin.findOne.mockReturnValue({
+      select: jest.fn().mockResolvedValue(null),
+    });
 
     const req = { body: { username: "ghost", password: "whatever" } };
     const res = mockRes();
@@ -72,10 +76,12 @@ describe("authController.login", () => {
   });
 
   it("returns 401 when the password is wrong", async () => {
-    Admin.findOne.mockResolvedValue({
-      _id: "admin123",
-      username: "admin",
-      password: "hashed-password",
+    Admin.findOne.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: "admin123",
+        username: "admin",
+        password: "hashed-password",
+      }),
     });
     bcrypt.compare.mockResolvedValue(false);
 

@@ -25,7 +25,7 @@ const TOKEN_TTL_SECONDS = 2 * 60 * 60; // 2 hours
 export const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
 
-  const admin = await Admin.findOne({ username });
+  const admin = await Admin.findOne({ username }).select("+password");
   if (!admin) {
     return res.status(401).json({ message: "Invalid username or password" });
   }
