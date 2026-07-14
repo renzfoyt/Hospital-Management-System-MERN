@@ -53,12 +53,56 @@ export const bookForm = asyncHandler(async (req, res) => {
     message,
   });
 
-  await newBooking.save();
+  try {
+    await newBooking.save();
+  } catch (err) {
+    // Duplicate key on the { preferredDate, preferredTime } unique index —
+    // someone already booked this exact slot (possibly seconds ago, in a
+    // race with this very request). Give a specific, actionable message
+    // instead of falling through to the generic errorHandler's
+    // "field already exists" wording.
+    if (err.code === 11000) {
+      return res.status(409).json({
+        message:
+          "That date and time slot was just booked by someone else. Please choose a different time.",
+      });
+    }
+    throw err;
+  }
 
   res.status(200).json({
     message: "Booking request received successfully",
     booking: newBooking,
   });
+});
+
+/**
+ * Public: list already-booked times for a given date, so the frontend can
+ * grey out taken slots before the user even submits.
+ * @param {import("express").Request<{}, {}, {}, { date?: string }>} req
+ * @param {import("express").Response} res
+ */
+export const getBookedSlots = asyncHandler(async (req, res) => {
+  const { date } = req.query;
+
+  if (!date || Number.isNaN(new Date(date).getTime())) {
+    return res.status(400).json({ message: "A valid date query param is required" });
+  }
+
+  // Match the whole calendar day regardless of what time component the
+  // stored Date happens to carry, rather than relying on exact millisecond
+  // equality with a freshly-parsed Date.
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+
+  const bookings = await BookingForm.find(
+    { preferredDate: { $gte: startOfDay, $lt: endOfDay }, status: { $ne: "cancelled" } },
+    "preferredTime -_id",
+  );
+
+  res.status(200).json({ bookedTimes: bookings.map((b) => b.preferredTime) });
 });
 
 /**

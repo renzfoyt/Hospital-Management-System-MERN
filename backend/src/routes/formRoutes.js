@@ -5,11 +5,13 @@ import {
   bookingFormSchema,
   contactFormSchema,
   updateStatusSchema,
+  updateBookingStatusSchema,
 } from "../schemas/formSchema.js";
 
 import {
   bookForm,
   contactForm,
+  getBookedSlots,
   adminGetBookings,
   adminUpdateBooking,
   adminDeleteBooking,
@@ -21,13 +23,14 @@ import {
 const router = express.Router();
 
 // Public form submissions
+router.get("/booking/slots", getBookedSlots);
 router.post("/booking", validate(bookingFormSchema), bookForm);
 router.post("/contacts", validate(contactFormSchema), contactForm);
 
 // Admin: bookings
 router.get("/admin/bookings", verifyToken, adminGetBookings);
 router.get("/admin/bookings/:id", verifyToken, adminGetBookings);
-router.put("/admin/bookings/:id", verifyToken, validate(updateStatusSchema), adminUpdateBooking);
+router.put("/admin/bookings/:id", verifyToken, validate(updateBookingStatusSchema), adminUpdateBooking);
 router.delete("/admin/bookings/:id", verifyToken, adminDeleteBooking);
 
 // Admin: contacts

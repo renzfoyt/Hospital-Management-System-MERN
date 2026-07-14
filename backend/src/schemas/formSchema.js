@@ -24,7 +24,12 @@ export const bookingFormSchema = z.object({
   message: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
-/** Admin edits to a booking/contact status (the only field the dashboard updates). */
+/** Admin edits to a contact's status (the only field the dashboard updates). */
 export const updateStatusSchema = z.object({
   status: z.enum(["pending", "handled"]),
+});
+
+/** Admin edits to a booking's status — includes "cancelled", which frees its slot. */
+export const updateBookingStatusSchema = z.object({
+  status: z.enum(["pending", "handled", "cancelled"]),
 });

@@ -93,6 +93,29 @@ const AdminDashboard = () => {
     }
   };
 
+  // Bookings only — separate from the pending/handled toggle above.
+  // Cancelling releases the date+time slot (see the partial unique index
+  // in the BookingForm model) so another patient can book it.
+  const handleCancelBooking = async (id) => {
+    if (
+      !window.confirm(
+        "Cancel this booking? This will free up its time slot for other patients.",
+      )
+    ) {
+      return;
+    }
+    try {
+      await adminFetch(`/admin/bookings/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+      toast.success("Booking cancelled — slot is now open");
+      load(activeTab);
+    } catch (err) {
+      toast.error(err.message || "Failed to cancel booking.");
+    }
+  };
+
   const handleDoctorStatusToggle = async (id, currentStatus) => {
     const nextStatus = currentStatus === "active" ? "inactive" : "active";
     try {
@@ -389,19 +412,31 @@ const AdminDashboard = () => {
                           className={`rounded-full px-2 py-1 text-xs font-semibold ${
                             b.status === "handled"
                               ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              : b.status === "cancelled"
+                                ? "bg-gray-200 text-gray-600"
+                                : "bg-yellow-100 text-yellow-800"
                           }`}
                         >
                           {b.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 space-x-2">
-                        <button
-                          onClick={() => handleStatusToggle(b._id, b.status)}
-                          className="text-green-700 hover:underline"
-                        >
-                          Mark {b.status === "pending" ? "Handled" : "Pending"}
-                        </button>
+                        {b.status !== "cancelled" && (
+                          <button
+                            onClick={() => handleStatusToggle(b._id, b.status)}
+                            className="text-green-700 hover:underline"
+                          >
+                            Mark {b.status === "pending" ? "Handled" : "Pending"}
+                          </button>
+                        )}
+                        {b.status !== "cancelled" && (
+                          <button
+                            onClick={() => handleCancelBooking(b._id)}
+                            className="text-orange-600 hover:underline"
+                          >
+                            Cancel
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(b._id)}
                           className="text-red-600 hover:underline"

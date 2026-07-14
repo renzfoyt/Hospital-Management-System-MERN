@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "../config/api";
 
 const TIME_SLOTS = [
@@ -46,6 +46,41 @@ const BookAppointment = () => {
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
+
+  const [bookedTimes, setBookedTimes] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  // Whenever the chosen date changes, ask the backend which times are
+  // already taken for that day so we can grey them out before the user
+  // even tries to submit.
+  const fetchBookedSlots = useCallback(async (date, signal) => {
+    if (!date) {
+      setBookedTimes([]);
+      return;
+    }
+    try {
+      setLoadingSlots(true);
+      const res = await fetch(`${API_BASE_URL}/booking/slots?date=${date}`, {
+        signal,
+      });
+      if (!res.ok) throw new Error("Failed to load booked slots");
+      const data = await res.json();
+      setBookedTimes(Array.isArray(data.bookedTimes) ? data.bookedTimes : []);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.error("Error fetching booked slots:", err);
+        setBookedTimes([]);
+      }
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchBookedSlots(form.preferredDate, controller.signal);
+    return () => controller.abort();
+  }, [form.preferredDate, fetchBookedSlots]);
 
   // Pull department/service options from real doctor records in the database
   useEffect(() => {
@@ -100,6 +135,8 @@ const BookAppointment = () => {
       [field]: value,
       // Reset service whenever department changes, since options depend on it
       ...(field === "department" ? { service: "" } : {}),
+      // Reset time whenever date changes, since availability is per-date
+      ...(field === "preferredDate" ? { preferredTime: "" } : {}),
     }));
   };
 
@@ -143,6 +180,12 @@ const BookAppointment = () => {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 409) {
+          // Someone else grabbed this slot between our last check and this
+          // submission — refresh the taken-slots list and clear the pick.
+          fetchBookedSlots(form.preferredDate);
+          setForm((prev) => ({ ...prev, preferredTime: "" }));
+        }
         throw new Error(
           data?.message || "Something went wrong. Please try again.",
         );
@@ -271,14 +314,24 @@ const BookAppointment = () => {
             <select
               value={form.preferredTime}
               onChange={handleChange("preferredTime")}
+              disabled={!form.preferredDate || loadingSlots}
               className={inputClasses}
             >
-              <option value="">Select Time</option>
-              {TIME_SLOTS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
+              <option value="">
+                {!form.preferredDate
+                  ? "Select Date First"
+                  : loadingSlots
+                    ? "Checking availability..."
+                    : "Select Time"}
+              </option>
+              {TIME_SLOTS.map((t) => {
+                const isBooked = bookedTimes.includes(t);
+                return (
+                  <option key={t} value={t} disabled={isBooked}>
+                    {isBooked ? `${t} (Booked)` : t}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>

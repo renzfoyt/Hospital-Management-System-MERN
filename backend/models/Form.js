@@ -76,7 +76,7 @@ const bookingFormSchema = new mongoose.Schema({
     },    
   status: {
     type: String,
-    enum: ["pending", "handled"],
+    enum: ["pending", "handled", "cancelled"],
     default: "pending",
 },
 },
@@ -87,5 +87,20 @@ const bookingFormSchema = new mongoose.Schema({
 // descending and filters/updates by status.
 bookingFormSchema.index({ createdAt: -1 });
 bookingFormSchema.index({ status: 1 });
+
+// Enforces one booking per date+time slot at the database level (global
+// slot lock, not per-doctor/department). This is a unique index rather
+// than just an application-level check so two simultaneous submissions
+// for the same slot can't both slip through a race condition — Mongo
+// itself rejects the second insert with a duplicate key error (code 11000),
+// which bookForm below catches and turns into a friendly 409 response.
+//
+// partialFilterExpression excludes cancelled bookings from the uniqueness
+// check, so once a booking is cancelled its date+time slot becomes
+// available again for a new booking.
+bookingFormSchema.index(
+  { preferredDate: 1, preferredTime: 1 },
+  { unique: true, partialFilterExpression: { status: { $ne: "cancelled" } } },
+);
 
 export const BookingForm = mongoose.model("BookingForm", bookingFormSchema);
