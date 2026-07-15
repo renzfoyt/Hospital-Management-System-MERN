@@ -1,13 +1,29 @@
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router";
-import { getAdminToken } from "../config/adminAuth";
+import { checkAdminSession } from "../config/adminAuth";
 
 // Client-side gate: keeps logged-out visitors from ever rendering the
-// dashboard shell. Real enforcement still happens on the backend — every
-// admin API call requires the JWT, and adminFetch() clears/redirects on 401.
+// dashboard shell. The JWT lives in an httpOnly cookie now, so we can't
+// just read localStorage — we ping /api/auth/verify on mount instead.
+// Real enforcement still happens on the backend regardless.
 const RequireAdminAuth = ({ children }) => {
-  const token = getAdminToken();
+  const [status, setStatus] = useState("checking"); // "checking" | "authed" | "unauthed"
 
-  if (!token) {
+  useEffect(() => {
+    let cancelled = false;
+    checkAdminSession().then((ok) => {
+      if (!cancelled) setStatus(ok ? "authed" : "unauthed");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (status === "checking") {
+    return null;
+  }
+
+  if (status === "unauthed") {
     return <Navigate to="/admin/login" replace />;
   }
 

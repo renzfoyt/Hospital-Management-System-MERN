@@ -1,29 +1,21 @@
 import { API_BASE_URL } from "./api";
 
-const TOKEN_KEY = "adminToken";
-
-export const getAdminToken = () => localStorage.getItem(TOKEN_KEY);
-export const setAdminToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-export const clearAdminToken = () => localStorage.removeItem(TOKEN_KEY);
-
 /**
- * Fetch wrapper that attaches the admin JWT and auto-clears it on 401.
- * Throws on non-2xx responses so callers can catch and show errors.
+ * Fetch wrapper for admin API calls. The JWT now lives in an httpOnly
+ * cookie — the browser attaches it automatically via credentials:
+ * "include". There's no token to read, store, or attach manually.
  */
 export async function adminFetch(path, options = {}) {
-  const token = getAdminToken();
-
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
 
   if (res.status === 401) {
-    clearAdminToken();
     throw new Error("SESSION_EXPIRED");
   }
 
@@ -34,4 +26,17 @@ export async function adminFetch(path, options = {}) {
   }
 
   return data;
+}
+
+/**
+ * Pings /api/auth/verify to check whether the httpOnly session cookie is
+ * still valid. Needed because the cookie itself is invisible to JS.
+ */
+export async function checkAdminSession() {
+  try {
+    await adminFetch("/auth/verify");
+    return true;
+  } catch {
+    return false;
+  }
 }

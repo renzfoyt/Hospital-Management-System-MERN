@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import toast from "react-hot-toast";
-import { adminFetch, clearAdminToken } from "../../config/adminAuth";
+import { adminFetch } from "../../config/adminAuth";
 
 const TABS = [
   { key: "bookings", label: "Bookings" },
@@ -74,7 +74,6 @@ const AdminDashboard = () => {
       // Token may already be expired/invalid — that's fine, we're
       // logging out either way. No need to surface this to the user.
     } finally {
-      clearAdminToken();
       navigate("/admin/login", { replace: true });
     }
   };

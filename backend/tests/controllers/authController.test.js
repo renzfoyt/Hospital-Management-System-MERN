@@ -26,11 +26,13 @@ const mockRes = () => {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockReturnValue(res);
+  res.cookie = jest.fn().mockReturnValue(res);
+  res.clearCookie = jest.fn().mockReturnValue(res);
   return res;
 };
 
 describe("authController.login", () => {
-  it("returns a signed JWT on valid credentials", async () => {
+  it("sets a signed JWT as an httpOnly cookie on valid credentials", async () => {
     Admin.findOne.mockReturnValue({
       select: jest.fn().mockResolvedValue({
         _id: "admin123",
@@ -46,16 +48,25 @@ describe("authController.login", () => {
     login(req, res, jest.fn());
     await flushPromises();
 
-    expect(res.status).toHaveBeenCalledWith(200);
-    const payload = res.json.mock.calls[0][0];
-    expect(payload.message).toBe("Login successful");
-    expect(typeof payload.token).toBe("string");
+    // Token now travels via Set-Cookie, not the JSON body.
+    expect(res.cookie).toHaveBeenCalledTimes(1);
+    const [cookieName, token, cookieOptions] = res.cookie.mock.calls[0];
+    expect(cookieName).toBe("adminToken");
+    expect(cookieOptions).toMatchObject({
+      httpOnly: true,
+      sameSite: "lax",
+    });
 
     // Confirm the token actually carries the expected claims
-    const decoded = jwt.verify(payload.token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     expect(decoded.username).toBe("admin");
     expect(decoded.id).toBe("admin123");
     expect(typeof decoded.jti).toBe("string");
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ message: "Login successful" });
+    // Body should never carry the raw token anymore
+    expect(res.json.mock.calls[0][0]).not.toHaveProperty("token");
   });
 
   it("returns 401 when the username doesn't exist", async () => {
@@ -69,6 +80,7 @@ describe("authController.login", () => {
     login(req, res, jest.fn());
     await flushPromises();
 
+    expect(res.cookie).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
       message: "Invalid username or password",
@@ -91,6 +103,7 @@ describe("authController.login", () => {
     login(req, res, jest.fn());
     await flushPromises();
 
+    expect(res.cookie).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
       message: "Invalid username or password",
@@ -99,7 +112,7 @@ describe("authController.login", () => {
 });
 
 describe("authController.logout", () => {
-  it("revokes the token's jti and confirms logout", async () => {
+  it("revokes the token's jti and clears the cookie", async () => {
     const nowSeconds = Math.floor(Date.now() / 1000);
     const req = {
       admin: { jti: "some-jti", exp: nowSeconds + 3600 },
@@ -110,6 +123,10 @@ describe("authController.logout", () => {
     await flushPromises();
 
     expect(revokeToken).toHaveBeenCalledWith("some-jti", expect.any(Number));
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      "adminToken",
+      expect.objectContaining({ httpOnly: true }),
+    );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ message: "Logout successful" });
   });

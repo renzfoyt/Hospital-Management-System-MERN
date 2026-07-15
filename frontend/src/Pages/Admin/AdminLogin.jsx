@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from "../../config/api";
-import { setAdminToken } from "../../config/adminAuth";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -22,6 +21,7 @@ const AdminLogin = () => {
       setSubmitting(true);
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
@@ -32,7 +32,6 @@ const AdminLogin = () => {
         throw new Error(data?.message || "Invalid username or password.");
       }
 
-      setAdminToken(data.token);
       navigate("/admin", { replace: true });
     } catch (err) {
       setError(err.message || "Unable to log in right now.");

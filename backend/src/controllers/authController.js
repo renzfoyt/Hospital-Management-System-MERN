@@ -5,23 +5,30 @@ import { Admin } from "../../models/Admin.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { revokeToken } from "../utils/tokenRevocation.js";
 
-// Kept as one source of truth so login (jwt.sign) and logout
-// (expiresInSeconds fallback) never drift apart.
 const TOKEN_TTL_SECONDS = 2 * 60 * 60; // 2 hours
+const COOKIE_NAME = "adminToken";
 
-/**
- * @typedef {Object} LoginRequestBody
- * @property {string} username
- * @property {string} password
- */
+// Shared so login (set) and logout (clear) always agree on cookie attributes.
+// httpOnly: JS on the page can never read this cookie — closes off the XSS
+// token-theft path that localStorage was exposed to.
+// secure: only sent over HTTPS in production (allowed over HTTP in dev so
+// localhost keeps working without a local TLS cert).
+// sameSite: "lax" is enough here since the frontend and backend cookie
+// exchange is same-site in the normal deploy shape (or first-party fetch),
+// and "lax" still allows the cookie on normal navigation/top-level requests.
+// TODO: no CSRF token yet. Currently covered by sameSite:"lax" + the
+// explicit CORS allowlist in app.js (blocks cross-site state-changing
+// requests and cross-origin response reads). Revisit if this ever gets
+// multiple admin roles or higher-stakes actions (bulk delete, data export,
+// managing other admins) — add a double-submit CSRF token at that point.
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: TOKEN_TTL_SECONDS * 1000,
+  path: "/",
+};
 
-/**
- * Admin login — checks credentials, returns a JWT if valid.
- * username/password presence is already guaranteed by the loginSchema
- * validation middleware, so this only handles the "do they match" logic.
- * @param {import("express").Request<{}, {}, LoginRequestBody>} req
- * @param {import("express").Response} res
- */
 export const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
 
@@ -35,8 +42,6 @@ export const login = asyncHandler(async (req, res) => {
     return res.status(401).json({ message: "Invalid username or password" });
   }
 
-  // jti (JWT ID) uniquely identifies this token so it can be individually
-  // revoked on logout, without invalidating any other active session.
   const jti = crypto.randomUUID();
 
   const token = jwt.sign(
@@ -45,24 +50,23 @@ export const login = asyncHandler(async (req, res) => {
     { expiresIn: TOKEN_TTL_SECONDS }
   );
 
-  res.status(200).json({
-    message: "Login successful",
-    token,
-  });
+  res.cookie(COOKIE_NAME, token, cookieOptions);
+  res.status(200).json({ message: "Login successful" });
 });
 
-/**
- * Admin logout — revokes the current token's jti so it can no longer be
- * used, even though it hasn't naturally expired yet. Relies on verifyToken
- * having already run and attached the decoded payload to req.admin.
- * @param {import("express").Request} req
- * @param {import("express").Response} res
- */
 export const logout = asyncHandler(async (req, res) => {
   const { jti, exp } = req.admin;
 
   const expiresInSeconds = exp - Math.floor(Date.now() / 1000);
   await revokeToken(jti, expiresInSeconds);
 
+  res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: undefined });
   res.status(200).json({ message: "Logout successful" });
+});
+
+export const verify = asyncHandler(async (req, res) => {
+  // If we got here, verifyToken already confirmed the cookie is valid
+  // and not revoked — this endpoint just tells the frontend "yes, you're
+  // logged in" so RequireAdminAuth has something to check on mount.
+  res.status(200).json({ admin: { id: req.admin.id, username: req.admin.username } });
 });

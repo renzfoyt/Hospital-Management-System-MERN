@@ -21,19 +21,22 @@ const signTestToken = (overrides = {}) =>
   );
 
 describe("verifyToken", () => {
-  it("rejects when no Authorization header is present", async () => {
-    const req = { headers: {} };
+  it("rejects when no cookie is present", async () => {
+    const req = { cookies: {} };
     const res = mockRes();
     const next = jest.fn();
 
     await verifyToken(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Unauthorized: no token provided",
+    });
     expect(next).not.toHaveBeenCalled();
   });
 
   it("rejects a malformed/invalid token", async () => {
-    const req = { headers: { authorization: "Bearer not-a-real-token" } };
+    const req = { cookies: { adminToken: "not-a-real-token" } };
     const res = mockRes();
     const next = jest.fn();
 
@@ -49,7 +52,7 @@ describe("verifyToken", () => {
   it("rejects a valid but revoked token", async () => {
     isTokenRevoked.mockResolvedValue(true);
     const token = signTestToken();
-    const req = { headers: { authorization: `Bearer ${token}` } };
+    const req = { cookies: { adminToken: token } };
     const res = mockRes();
     const next = jest.fn();
 
@@ -65,7 +68,7 @@ describe("verifyToken", () => {
   it("calls next() and attaches req.admin for a valid, non-revoked token", async () => {
     isTokenRevoked.mockResolvedValue(false);
     const token = signTestToken();
-    const req = { headers: { authorization: `Bearer ${token}` } };
+    const req = { cookies: { adminToken: token } };
     const res = mockRes();
     const next = jest.fn();
 
