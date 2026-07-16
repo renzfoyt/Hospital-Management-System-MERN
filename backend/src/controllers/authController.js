@@ -4,6 +4,11 @@ import crypto from "crypto";
 import { Admin } from "../../models/Admin.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { revokeToken } from "../utils/tokenRevocation.js";
+import {
+  isAccountLocked,
+  recordFailedAttempt,
+  clearFailedAttempts,
+} from "../utils/accountLockout.js";
 
 const TOKEN_TTL_SECONDS = 2 * 60 * 60; // 2 hours
 const COOKIE_NAME = "adminToken";
@@ -32,22 +37,33 @@ const cookieOptions = {
 export const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
 
+  if (await isAccountLocked(username)) {
+    return res.status(429).json({
+      message:
+        "Too many failed login attempts. Please try again in a few minutes.",
+    });
+  }
+
   const admin = await Admin.findOne({ username }).select("+password");
   if (!admin) {
+    await recordFailedAttempt(username);
     return res.status(401).json({ message: "Invalid username or password" });
   }
 
   const isMatch = await bcrypt.compare(password, admin.password);
   if (!isMatch) {
+    await recordFailedAttempt(username);
     return res.status(401).json({ message: "Invalid username or password" });
   }
+
+  await clearFailedAttempts(username);
 
   const jti = crypto.randomUUID();
 
   const token = jwt.sign(
     { id: admin._id, username: admin.username, jti },
     process.env.JWT_SECRET,
-    { expiresIn: TOKEN_TTL_SECONDS }
+    { expiresIn: TOKEN_TTL_SECONDS },
   );
 
   res.cookie(COOKIE_NAME, token, cookieOptions);
@@ -68,5 +84,7 @@ export const verify = asyncHandler(async (req, res) => {
   // If we got here, verifyToken already confirmed the cookie is valid
   // and not revoked — this endpoint just tells the frontend "yes, you're
   // logged in" so RequireAdminAuth has something to check on mount.
-  res.status(200).json({ admin: { id: req.admin.id, username: req.admin.username } });
+  res
+    .status(200)
+    .json({ admin: { id: req.admin.id, username: req.admin.username } });
 });
