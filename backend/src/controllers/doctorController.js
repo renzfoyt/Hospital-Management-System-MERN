@@ -7,12 +7,18 @@ import { paginate } from "../utils/paginate.js";
  * @property {string} firstName
  * @property {string} lastName
  * @property {string} specialty
+ * @property {string} [subSpecialty]
  * @property {string} department
  * @property {string} [credentials]
  * @property {string} [bio]
  * @property {string} [photoUrl]
  * @property {string} [email]
  * @property {string} [contactNumber]
+ * @property {"Male"|"Female"} [gender]
+ * @property {string[]} [clinicDays]
+ * @property {string} [clinicHourIn]
+ * @property {string} [clinicHourOut]
+ * @property {string[]} [hmoAccepted]
  * @property {string[]} [availability]
  * @property {"active"|"inactive"} [status]
  */
@@ -54,12 +60,18 @@ export const adminCreateDoctor = asyncHandler(async (req, res) => {
     firstName,
     lastName,
     specialty,
+    subSpecialty,
     department,
     credentials,
     bio,
     photoUrl,
     email,
     contactNumber,
+    gender,
+    clinicDays,
+    clinicHourIn,
+    clinicHourOut,
+    hmoAccepted,
     availability,
     status,
   } = req.body;
@@ -68,12 +80,18 @@ export const adminCreateDoctor = asyncHandler(async (req, res) => {
     firstName,
     lastName,
     specialty,
+    subSpecialty,
     department,
     credentials,
     bio,
     photoUrl,
     email,
     contactNumber,
+    gender,
+    clinicDays,
+    clinicHourIn,
+    clinicHourOut,
+    hmoAccepted,
     availability,
     status,
   });
