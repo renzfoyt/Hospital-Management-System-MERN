@@ -10,6 +10,11 @@ jest.mock("bcryptjs", () => ({
 jest.mock("../../src/utils/tokenRevocation.js", () => ({
   revokeToken: jest.fn(),
 }));
+jest.mock("../../src/utils/accountLockout.js", () => ({
+  isAccountLocked: jest.fn().mockResolvedValue(false),
+  recordFailedAttempt: jest.fn(),
+  clearFailedAttempts: jest.fn(),
+}));
 
 import jwt from "jsonwebtoken";
 import { Admin } from "../../models/Admin.js";

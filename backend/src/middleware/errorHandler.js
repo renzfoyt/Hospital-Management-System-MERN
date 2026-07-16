@@ -5,7 +5,9 @@ import { logger } from "../config/logger.js";
  * real routes and BEFORE errorHandler.
  */
 export const notFound = (req, res) => {
-  res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
+  res
+    .status(404)
+    .json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
 };
 
 /**
@@ -31,7 +33,9 @@ export const errorHandler = (err, req, res, next) => {
 
   // Mongoose bad ObjectId, e.g. GET /admin/doctors/not-a-real-id
   if (err.name === "CastError") {
-    return res.status(400).json({ message: `Invalid ${err.path}: ${err.value}` });
+    return res
+      .status(400)
+      .json({ message: `Invalid ${err.path}: ${err.value}` });
   }
 
   // Mongoose duplicate key, e.g. Admin.username unique constraint
@@ -42,9 +46,20 @@ export const errorHandler = (err, req, res, next) => {
 
   // Malformed/expired JWT that reaches here instead of being caught inline
   if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
-    return res.status(401).json({ message: "Unauthorized: invalid or expired token" });
+    return res
+      .status(401)
+      .json({ message: "Unauthorized: invalid or expired token" });
   }
-
+  // Multer errors (e.g. file too large) — give a clearer message than
+  // the generic 500 fallback below would.
+  if (err.name === "MulterError") {
+    const message =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "Image must be 5MB or smaller"
+        : err.message;
+    return res.status(400).json({ message });
+  }
+  
   const status = err.statusCode || 500;
   res.status(status).json({
     message: status === 500 ? "Internal server error" : err.message,

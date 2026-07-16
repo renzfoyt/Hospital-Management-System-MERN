@@ -17,6 +17,11 @@ jest.mock("../../src/utils/tokenRevocation.js", () => ({
   revokeToken: jest.fn(),
   isTokenRevoked: jest.fn().mockResolvedValue(false),
 }));
+jest.mock("../../src/utils/accountLockout.js", () => ({
+  isAccountLocked: jest.fn().mockResolvedValue(false),
+  recordFailedAttempt: jest.fn(),
+  clearFailedAttempts: jest.fn(),
+}));
 
 import request from "supertest";
 import { createApp } from "../../src/app.js";
